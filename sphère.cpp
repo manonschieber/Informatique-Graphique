@@ -49,6 +49,9 @@ Vector operator*(const double a, const Vector& b) {
 Vector operator*(const Vector& a, const double b) {
     return Vector(a[0]*b, a[1]*b, a[2]*b);
 }
+Vector operator*(const Vector& a, const Vector& b) {  //multiplication terme à terme, utilisée pour les sphères colorées 
+    return Vector(a[0]*b[0], a[1]*b[1], a[2]*b[2]);
+}
 Vector operator/(const Vector& a, const double b) {
     return Vector(a[0] / b, a[1] / b, a[2] / b);
 }
@@ -75,10 +78,10 @@ class Source {
 
 class Sphere {  //une origine et un rayon
     public:
-        Sphere(const Vector& origine, const double rayon) : O(origine), R(rayon) {};
+        Sphere(const Vector& origine, const double rayon, const Vector couleur) : O(origine), R(rayon) , C(couleur) {};
         Vector O;
         double R;
-        Vector couleur;
+        Vector C;
 };
 
 bool intersect(const Ray& r, Sphere& s, Vector& P, Vector& N) {
@@ -116,7 +119,7 @@ int main() {
     Vector source(-15, 20, -30);
     double intensite = 500000;
 
-	Sphere s(Vector(0,0,-55),20);
+	Sphere s(Vector(0,0,-55),20, Vector(0,0,1));   //spère bleue 
 	double fov=60*M_PI/180.;   //champ visuel 
 	double tanfov2 = tan(fov/2);
 
@@ -129,18 +132,15 @@ int main() {
 			Ray r(C,u);  //rayon de la vision
 
             Vector P,N; //vecteurs position et normal
-            double eclairage = 0;
+            Vector eclairage = Vector(0,0,0);
 			if (intersect(r,s,P,N) == true){
                 Vector A = source - P;
                 double B = (source - P).norm2();
                 A.normalize();
-                eclairage = fmax(0,dot(A,N))*intensite/B;
-                if (eclairage>255){
-                    eclairage = 255;
-                }
-				image[((H-i-1) * W + j) * 3 + 0] = fmax(0,eclairage);  //coordonnée rouge
-            	image[((H-i-1) * W + j) * 3 + 1] = fmax(0,eclairage);  //coordonnée verte
-            	image[((H-i-1) * W + j) * 3 + 2] = fmax(0,eclairage);  //coordonnée bleue 
+                eclairage = s.C*fmax(0,dot(A,N))*intensite/B;
+				image[((H-i-1) * W + j) * 3 + 0] = fmin(255, fmax(0,eclairage[0]));  //coordonnée rouge
+            	image[((H-i-1) * W + j) * 3 + 1] = fmin(255,fmax(0,eclairage[1]));  //coordonnée verte
+            	image[((H-i-1) * W + j) * 3 + 2] = fmin(255,fmax(0,eclairage[2]));  //coordonnée bleue 
 			}
 			else {
 				image[((H-i-1) * W + j) * 3 + 0] = 0;
