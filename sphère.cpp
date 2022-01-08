@@ -82,13 +82,11 @@ class Sphere {  //une origine et un rayon
         Vector O;
         double R;
         Vector C;
-};
-
-bool intersect(const Ray& r, Sphere& s, Vector& P, Vector& N) {
+    bool intersect(const Ray& r, Vector& P, Vector& N, double t) {
     //P la position, N la normale 
     double a = 1;
-    double b = 2*dot(r.direction,r.origine-s.O);
-    double c = (r.origine - s.O).norm2()-s.R*s.R;
+    double b = 2*dot(r.direction,r.origine-O);
+    double c = (r.origine - O).norm2()-R*R;
 
     double delta = b*b - 4*a*c;
     if (delta<0) {return false;}
@@ -97,7 +95,6 @@ bool intersect(const Ray& r, Sphere& s, Vector& P, Vector& N) {
             double x2 = (-b +sqrt(delta))/(2*a);
             if (x2 < 0) {return false;}  //pas d'intersection
             else { 
-                double t;
                 if (x1>0){
                     t=x1;
                 }
@@ -105,10 +102,39 @@ bool intersect(const Ray& r, Sphere& s, Vector& P, Vector& N) {
                     t=x2;
                 }
                 P = r.origine + t*r.direction;
-                N = (P-s.O);
+                N = (P-O);
                 N.normalize();
             };
             return true;
+    };
+};
+};
+
+class Scene {  // ensemble de sphères 
+public: 
+    Scene() {};
+    void ajoutersphere(const Sphere& s) {spheres.push_back(s);}
+    std::vector<Sphere> spheres;
+
+    bool intersection(const Ray& r, Vector& P, Vector& N, int& sphere_inter_id) {   //pour toutes les sphères
+        //P la position, N la normale 
+        bool inter = false;
+        double min_t = 10E10;
+        for (int i=0; i<spheres.size();i++){
+            Vector Pprime, Nprime;
+            double t;
+            bool interprime = spheres[i].intersect(r,Pprime,Nprime,t);
+            if (interprime){  //il y a bien une intersection avec cette sphère
+                inter = true;
+                if (t < min_t){   //la sphère est plus proche 
+                    min_t = t; 
+                    P = Pprime;
+                    N = Nprime;
+                    sphere_inter_id = i;
+                }
+            }
+        }
+        return inter;
     };
 };
  
@@ -123,6 +149,20 @@ int main() {
 	double fov=60*M_PI/180.;   //champ visuel 
 	double tanfov2 = tan(fov/2);
 
+    Sphere s1(Vector(0,-2000-20,0), 2000, Vector(1,1,1));  //sol blanc, de telle sorte à ce que la sphre soit posée sur le sol
+    Sphere s2(Vector(0,2000+30,0), 2000, Vector(1,1,1));  //plafond
+    Sphere s3(Vector(-2000-30,0,0), 2000, Vector(1,1,1));  //mur à gauche 
+    Sphere s4(Vector(2000+30,0,0), 2000, Vector(1,1,1));  //mur à droite 
+    Sphere s5(Vector(0,0,-2000-30), 2000, Vector(1,1,1));  //mur au fond 
+
+    Scene scene;
+    scene.ajoutersphere(s);
+    scene.ajoutersphere(s1);
+    scene.ajoutersphere(s2);
+    scene.ajoutersphere(s3);
+    scene.ajoutersphere(s4);
+    scene.ajoutersphere(s5);
+
     std::vector<unsigned char> image(W * H * 3, 0);
     for (int i = 0; i < H; i++) {   // on parcourt l'image 
         for (int j = 0; j < W; j++) {
@@ -132,12 +172,13 @@ int main() {
 			Ray r(C,u);  //rayon de la vision
 
             Vector P,N; //vecteurs position et normal
+            int sphere_inter_id;
             Vector eclairage = Vector(0,0,0);
-			if (intersect(r,s,P,N) == true){
+			if (scene.intersection(r,P,N, sphere_inter_id) == true){
                 Vector A = source - P;
                 double B = (source - P).norm2();
                 A.normalize();
-                eclairage = s.C*fmax(0,dot(A,N))*intensite/B;
+                eclairage = scene.spheres[sphere_inter_id].C*fmax(0,dot(A,N))*intensite/B;
 				image[((H-i-1) * W + j) * 3 + 0] = fmin(255, fmax(0,eclairage[0]));  //coordonnée rouge
             	image[((H-i-1) * W + j) * 3 + 1] = fmin(255,fmax(0,eclairage[1]));  //coordonnée verte
             	image[((H-i-1) * W + j) * 3 + 2] = fmin(255,fmax(0,eclairage[2]));  //coordonnée bleue 
