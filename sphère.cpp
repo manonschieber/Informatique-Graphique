@@ -8,7 +8,8 @@
 #include "stb_image.h"
 
 #include <iostream>     // std::cout
-#include <algorithm>    // std::min
+#include <algorithm>    
+#include <math.h>    
  
 class Vector {
 public:
@@ -77,9 +78,11 @@ class Sphere {  //une origine et un rayon
         Sphere(const Vector& origine, const double rayon) : O(origine), R(rayon) {};
         Vector O;
         double R;
+        Vector couleur;
 };
 
-bool intersect(const Ray& r, Sphere& s) {
+bool intersect(const Ray& r, Sphere& s, Vector& P, Vector& N) {
+    //P la position, N la normale 
     double a = 1;
     double b = 2*dot(r.direction,r.origine-s.O);
     double c = (r.origine - s.O).norm2()-s.R*s.R;
@@ -89,8 +92,20 @@ bool intersect(const Ray& r, Sphere& s) {
         else{
             double x1 = (-b -sqrt(delta))/(2*a);
             double x2 = (-b +sqrt(delta))/(2*a);
-            if (x2 >0) {return true;}
-            else { return false;};
+            if (x2 < 0) {return false;}  //pas d'intersection
+            else { 
+                double t;
+                if (x1>0){
+                    t=x1;
+                }
+                else{
+                    t=x2;
+                }
+                P = r.origine + t*r.direction;
+                N = (P-s.O);
+                N.normalize();
+            };
+            return true;
     };
 };
  
@@ -98,7 +113,8 @@ int main() {
     int W = 512;
     int H = 512;
  
-    //Source source(5,Vector(0,0,0));
+    Vector source(-15, 20, -30);
+    double intensite = 500000;
 
 	Sphere s(Vector(0,0,-55),20);
 	double fov=60*M_PI/180.;   //champ visuel 
@@ -112,15 +128,24 @@ int main() {
 			u.normalize();
 			Ray r(C,u);  //rayon de la vision
 
-			if (intersect(r,s) == true){
-				image[(i * W + j) * 3 + 0] = 255;  //coordonnée rouge
-            	image[(i * W + j) * 3 + 1] = 255;  //coordonnée verte
-            	image[(i * W + j) * 3 + 2] = 255;  //coordonnée bleue 
+            Vector P,N; //vecteurs position et normal
+            double eclairage = 0;
+			if (intersect(r,s,P,N) == true){
+                Vector A = source - P;
+                double B = (source - P).norm2();
+                A.normalize();
+                eclairage = fmax(0,dot(A,N))*intensite/B;
+                if (eclairage>255){
+                    eclairage = 255;
+                }
+				image[((H-i-1) * W + j) * 3 + 0] = fmax(0,eclairage);  //coordonnée rouge
+            	image[((H-i-1) * W + j) * 3 + 1] = fmax(0,eclairage);  //coordonnée verte
+            	image[((H-i-1) * W + j) * 3 + 2] = fmax(0,eclairage);  //coordonnée bleue 
 			}
 			else {
-				image[(i * W + j) * 3 + 0] = 0;
-            	image[(i * W + j) * 3 + 1] = 0;
-            	image[(i * W + j) * 3 + 2] = 0;
+				image[((H-i-1) * W + j) * 3 + 0] = 0;
+            	image[((H-i-1) * W + j) * 3 + 1] = 0;
+            	image[((H-i-1) * W + j) * 3 + 2] = 0;
 			};
         }
     };
