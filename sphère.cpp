@@ -143,9 +143,9 @@ int main() {
     int H = 512;
  
     Vector source(-15, 20, -30);
-    double intensite = 500000;
+    double intensite = 500000000;
 
-	Sphere s(Vector(0,0,-55),20, Vector(0,0,1));   //spère bleue 
+	Sphere s(Vector(0,0,-60),10, Vector(0,0,1));   //spère bleue 
 	double fov=60*M_PI/180.;   //champ visuel 
 	double tanfov2 = tan(fov/2);
 
@@ -179,7 +179,10 @@ int main() {
                 double B = (source - P).norm2();
                 A.normalize();
                 eclairage = scene.spheres[sphere_inter_id].C*fmax(0,dot(A,N))*intensite/B;
-				image[((H-i-1) * W + j) * 3 + 0] = fmin(255, fmax(0,eclairage[0]));  //coordonnée rouge
+                for (int k=0; k<3; k++){
+                    eclairage[k]=pow(eclairage[k], 1.0/2.2);
+                };
+				image[((H-i-1) * W + j) * 3 + 0] = fmin(255, (fmax(0,eclairage[0])));  //coordonnée rouge
             	image[((H-i-1) * W + j) * 3 + 1] = fmin(255,fmax(0,eclairage[1]));  //coordonnée verte
             	image[((H-i-1) * W + j) * 3 + 2] = fmin(255,fmax(0,eclairage[2]));  //coordonnée bleue 
 			}
