@@ -77,9 +77,9 @@ class Source {
 };
 
 class Sphere {  //une origine et un rayon
-    public:
-        Sphere(const Vector& origine, const double rayon, const Vector couleur, bool isMirror = false) : O(origine), R(rayon) , C(couleur), isMirror(isMirror) {};
-    bool intersect(const Ray& r, Vector& P, Vector& N, double& t) {
+public:
+    Sphere(const Vector& origine, const double rayon, const Vector couleur, bool isMirror = false) : O(origine), R(rayon) , C(couleur), isMirror(isMirror) {};
+    bool intersect(const Ray& r, Vector& P, Vector& N, double& t) const {
     //P la position, N la normale 
     double a = 1;
     double b = dot(r.direction,r.origine-O);
@@ -140,8 +140,8 @@ public:
     };
 };
 
-Vector getColor(const Ray &r, const Scene &scene, int numero_rebond){   //renvoie la couleur du pixel 
-    if (numero_rebond==0) return Vector(0,0,0);
+Vector getColor(const Ray &r, const Scene &scene, int nombre_rebond){   //renvoie la couleur du pixel 
+    if (nombre_rebond==0) return Vector(0,0,0);
 
     Vector P,N; //vecteurs position et normal
     int sphere_inter_id;
@@ -149,7 +149,9 @@ Vector getColor(const Ray &r, const Scene &scene, int numero_rebond){   //renvoi
     Vector intensite_pixel(0,0,0);
 	if (scene.intersection(r,P,N, sphere_inter_id) == true){  //une intersection est trouvée 
         if (scene.spheres[sphere_inter_id].isMirror){
-
+            Vector direction_miroir = r.direction - 2*dot(N,r.direction)*N;
+            Ray rayon_miroir(P+0.001*N, direction_miroir);
+            intensite_pixel = getColor(rayon_miroir, scene, nombre_rebond -1);  //un rebon de moins 
         }
         else{
             Vector A2 = scene.source - P;
@@ -159,7 +161,7 @@ Vector getColor(const Ray &r, const Scene &scene, int numero_rebond){   //renvoi
             int sphere_inter_id2;
             if (scene.intersection(r2,P2,N2, sphere_inter_id2) == true){  //une intersection est trouvée 
                 double distance = (P-P2).norm();
-                double distance2 = (P-scene.source).norm();
+                double distance2 = (scene.source-P).norm();
                 if (distance < distance2){
                     intensite_pixel = Vector(0,0,0);
                 }
