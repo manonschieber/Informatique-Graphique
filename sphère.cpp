@@ -182,6 +182,7 @@ int main() {
     int H = 512;
 
 	Sphere s(Vector(0,0,0),10, Vector(0,0,1), true);   //spère bleue 
+    Sphere sbis(Vector(25,0,0),10, Vector(0,0,1), true);   //spère bleue 
 	double fov=60*M_PI/180.;   //champ visuel 
 	double tanfov2 = tan(fov/2);
 
@@ -194,6 +195,7 @@ int main() {
 
     Scene scene;
     scene.ajoutersphere(s);
+    scene.ajoutersphere(sbis);
     scene.ajoutersphere(s1);
     scene.ajoutersphere(s2);
     scene.ajoutersphere(s3);
