@@ -35,7 +35,10 @@ public:
     double& operator[](int i) { return data[i]; };
     double data[3];
 };
- 
+
+Vector operator-(const Vector& b) {
+    return Vector(- b[0], - b[1], - b[2]);
+}
 Vector operator+(const Vector& a, const Vector& b) {
     //addition de deux vecteurs
     return Vector(a[0] + b[0], a[1] + b[1], a[2] + b[2]);
@@ -78,7 +81,7 @@ class Source {
 
 class Sphere {  //une origine et un rayon
 public:
-    Sphere(const Vector& origine, const double rayon, const Vector couleur, bool isMirror = false) : O(origine), R(rayon) , C(couleur), isMirror(isMirror) {};
+    Sphere(const Vector& origine, const double rayon, const Vector couleur, bool isMirror = false, bool isTransparent = false) : O(origine), R(rayon) , C(couleur), isMirror(isMirror), isTransparent(isTransparent){};
     bool intersect(const Ray& r, Vector& P, Vector& N, double& t) const {
     //P la position, N la normale 
     double a = 1;
@@ -109,6 +112,7 @@ public:
     double R;
     Vector C;
     bool isMirror;
+    bool isTransparent;
 };
 
 class Scene {  // ensemble de sphères 
@@ -148,17 +152,34 @@ Vector getColor(const Ray &r, const Scene &scene, int nombre_rebond){   //renvoi
     Vector eclairage = Vector(0,0,0);
     Vector intensite_pixel(0,0,0);
 	if (scene.intersection(r,P,N, sphere_inter_id) == true){  //une intersection est trouvée 
-        if (scene.spheres[sphere_inter_id].isMirror){
+        if (scene.spheres[sphere_inter_id].isMirror){  //sphère miroir
             Vector direction_miroir = r.direction - 2*dot(N,r.direction)*N;
             Ray rayon_miroir(P+0.001*N, direction_miroir);
             intensite_pixel = getColor(rayon_miroir, scene, nombre_rebond -1);  //un rebon de moins 
-        }
-        else{
+        } else {
+            if (scene.spheres[sphere_inter_id].isTransparent){
+                double indice1=1; //air
+                double indice2 = 1.3;   //verre
+                Vector normale_transparence(N);
+                if (dot(r.direction, N) >0 ){   //on est en train de sortir de la sphère 
+                    indice1 = 1.3;
+                    indice2=1;
+                    normale_transparence = -N;
+                }
+                double nombre_racine = 1 - indice1/indice2*indice1/indice2*(1-dot(normale_transparence,r.direction)*dot(normale_transparence,r.direction));
+                if (nombre_racine>0){
+                    Vector direction_refracte = (indice1/indice2)*(r.direction - dot(r.direction, normale_transparence)*normale_transparence) * sqrt(nombre_racine);
+                    Ray rayon_refracte(P-0.001*normale_transparence, direction_refracte);
+                    intensite_pixel = getColor(rayon_refracte, scene, nombre_rebond -1);  //un rebond de moins    
+                }
+               
+            } else{
             Vector A2 = scene.source - P;
             A2.normalize();
             Ray r2(P+0.005*A2,A2);
             Vector P2,N2;
             int sphere_inter_id2;
+
             if (scene.intersection(r2,P2,N2, sphere_inter_id2) == true){  //une intersection est trouvée 
                 double distance = (P-P2).norm();
                 double distance2 = (scene.source-P).norm();
@@ -170,19 +191,20 @@ Vector getColor(const Ray &r, const Scene &scene, int nombre_rebond){   //renvoi
                     double B = (scene.source - P).norm2();  //vecteur unitaire qui part de P et se dirige vers la lumière 
                     A.normalize();
                     intensite_pixel = scene.spheres[sphere_inter_id].C*scene.intensite*fmax(0,dot(A,N))/B;
-                }
+                };
             }
+
         }
-    }   
+
+        }
+    }
     return intensite_pixel;
 };
- 
 int main() {
     int W = 512;
     int H = 512;
 
-	Sphere s(Vector(0,0,0),10, Vector(0,0,1), true);   //spère bleue 
-    Sphere sbis(Vector(25,0,0),10, Vector(0,0,1), true);   //spère bleue 
+	Sphere s(Vector(0,0,0),10, Vector(0,0,1), false, true);   //spère bleue 
 	double fov=60*M_PI/180.;   //champ visuel 
 	double tanfov2 = tan(fov/2);
 
@@ -195,7 +217,6 @@ int main() {
 
     Scene scene;
     scene.ajoutersphere(s);
-    scene.ajoutersphere(sbis);
     scene.ajoutersphere(s1);
     scene.ajoutersphere(s2);
     scene.ajoutersphere(s3);
