@@ -255,7 +255,7 @@ int main() {
     scene.ajoutersphere(s5);
  
     scene.source = Vector(-10, 20, 40);
-    scene.intensite = 100000000;
+    scene.intensite = 50000000;
 
     std::vector<unsigned char> image(W * H * 3, 0);
     #pragma omp parallel for 
@@ -267,7 +267,7 @@ int main() {
 			Ray r(C,u);  //rayon de la vision
 
             Vector color(0,0,0);
-            for (int k=0; k<50; k++){  //on envoie 5 rayons au lieu d'un seul 
+            for (int k=0; k<100; k++){  //on envoie 5 rayons au lieu d'un seul 
                 color = color + getColor(r, scene, 5)/5;
             };
 
