@@ -182,25 +182,21 @@ Vector getColor(const Ray &r, const Scene &scene, int nombre_rebond){   //renvoi
         //CONTRIBUTION DIRECTE : pas de sphère transparente, ni miroir
         Vector A2 = scene.source - P;
         A2.normalize();
-        Ray r2(P+0.005*A2,A2);
+        Ray r2(P+0.005*N,A2);
         Vector P2,N2;
         int sphere_inter_id2;
 
-        if (scene.intersection(r2,P2,N2, sphere_inter_id2) == true){  //une intersection est trouvée 
-            double distance = (P-P2).norm();
-            double distance2 = (scene.source-P).norm();
-            if (distance < distance2){
-                intensite_pixel = Vector(0,0,0);
-            }
-            else{
-                Vector A = scene.source - P;
-                double B = (scene.source - P).norm2();  //vecteur unitaire qui part de P et se dirige vers la lumière 
-                A.normalize();
-                intensite_pixel = scene.spheres[sphere_inter_id].C/M_PI*scene.intensite*fmax(0,dot(A,N))/B;
-            };
-        };
+        bool isInter = scene.intersection(r2,P2,N2, sphere_inter_id2);
+        double distance = (P-P2).norm();
+        double distance2 = (scene.source-P).norm();
+        if (isInter == false || distance > distance2){  //une intersection est trouvée 
+            Vector A = scene.source - P;
+            double B = (scene.source - P).norm2();  //vecteur unitaire qui part de P et se dirige vers la lumière 
+            A.normalize();
+            intensite_pixel = scene.spheres[sphere_inter_id].C/M_PI*scene.intensite*fmax(0,dot(A,N))/B;
+        }
 
-        //CONTRIBUTION INDIRECTE
+        // //CONTRIBUTION INDIRECTE
         std::random_device rd;
         std::default_random_engine eng(rd());
         std::uniform_real_distribution<float> distr(0, 1);
@@ -229,7 +225,6 @@ Vector getColor(const Ray &r, const Scene &scene, int nombre_rebond){   //renvoi
         direction_aleatoire = direction_aleatoire[0]*T1+direction_aleatoire[1]*T2+direction_aleatoire[2]*N;
         Ray rayon_aleatoire(P+0.001*N, direction_aleatoire);
         intensite_pixel= intensite_pixel + getColor(rayon_aleatoire, scene, nombre_rebond -1)*scene.spheres[sphere_inter_id].C;  
-
     };
     return intensite_pixel;
 };
@@ -272,7 +267,7 @@ int main() {
 			Ray r(C,u);  //rayon de la vision
 
             Vector color(0,0,0);
-            for (int k=0; k<10; k++){  //on envoie 5 rayons au lieu d'un seul 
+            for (int k=0; k<50; k++){  //on envoie 5 rayons au lieu d'un seul 
                 color = color + getColor(r, scene, 5)/5;
             };
 
