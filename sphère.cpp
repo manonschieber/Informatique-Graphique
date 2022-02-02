@@ -261,13 +261,17 @@ int main() {
     #pragma omp parallel for 
     for (int i = 0; i < H; i++) {   // on parcourt l'image 
         for (int j = 0; j < W; j++) {
-            Vector C(0,0,55);  //origine du vecteur vision
-			Vector u(j-W/2+0.5, i-H/2+0.5, -W/(2*tan(fov/2.)));   // direction du vecteur vision
-			u.normalize();
-			Ray r(C,u);  //rayon de la vision
-
             Vector color(0,0,0);
-            for (int k=0; k<100; k++){  //on envoie 5 rayons au lieu d'un seul 
+            for (int k=0; k<20; k++){  //on envoie 5 rayons au lieu d'un seul 
+                double depth = H/(2*tan(fov*0.5));
+                double r1 = drand48();
+                double r2 = drand48();
+                double x = sqrt(-2*log(r1))*cos(2*M_PI*r2)*0.5;
+                double y = sqrt(-2*log(r1))*sin(2*M_PI*r2)*0.5;
+                Vector C(0,0,55);  //origine du vecteur vision
+                Vector u(j-W/2+0.5+x, i-H/2+0.5+y, -W/(2*tan(fov/2.)));   // direction du vecteur vision
+                u.normalize();
+                Ray r(C,u);  //rayon de la vision
                 color = color + getColor(r, scene, 5)/5;
             };
 
