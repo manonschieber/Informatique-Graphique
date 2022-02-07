@@ -230,7 +230,7 @@ Vector getColor(const Ray &r, const Scene &scene, int nombre_rebond){   //renvoi
         Vector point_aleatoire = direction_aleatoire * scene.lumiere->R + scene.lumiere->O;
         Vector wi = (point_aleatoire - P);
         wi.normalize();
-        double distance = (point_aleatoire - P).norm2();
+        double distance = (point_aleatoire - P).norm();
 
         Ray r2(P+0.005*N,wi);
         Vector P2,N2;
@@ -283,23 +283,35 @@ int main() {
  
     scene.lumiere = &lumiere;
     scene.intensite = 50000000;
+    Vector position_camera(0,0,55);  //origine du vecteur vision
+    double focus = 0;  // tout ce qui est avant ou après cette distance là sera plus floue
+    int nbrayons = 2; 
 
     std::vector<unsigned char> image(W * H * 3, 0);
     #pragma omp parallel for 
     for (int i = 0; i < H; i++) {   // on parcourt l'image 
         for (int j = 0; j < W; j++) {
             Vector color(0,0,0);
-            for (int k=0; k<2 ; k++){  //on envoie 5 rayons au lieu d'un seul 
+            for (int k=0; k<nbrayons ; k++){  //on envoie 5 rayons au lieu d'un seul 
                 double depth = H/(2*tan(fov*0.5));
                 double r1 = drand48();
                 double r2 = drand48();
                 double x = sqrt(-2*log(r1))*cos(2*M_PI*r2)*0.5;
                 double y = sqrt(-2*log(r1))*sin(2*M_PI*r2)*0.5;
-                Vector C(0,0,55);  //origine du vecteur vision
+
+                double dx_profondeur = (drand48()-0.5)*5;
+                double dy_profondeur = (drand48()-0.5)*5;
+
                 Vector u(j-W/2+0.5+x, i-H/2+0.5+y, -W/(2*tan(fov/2.)));   // direction du vecteur vision
                 u.normalize();
-                Ray r(C,u);  //rayon de la vision
-                color = color + getColor(r, scene, 5)/5;
+
+                Vector mise_au_point = position_camera + focus*u;
+                Vector nouvelle_origine = position_camera + Vector(dx_profondeur,dy_profondeur,0);
+
+                Vector a = mise_au_point - nouvelle_origine;
+                a.normalize();
+                Ray r(nouvelle_origine,a);  //rayon de la vision
+                color = color + getColor(r, scene, 5)/nbrayons;
             };
 
 			image[((H-i-1) * W + j) * 3 + 0] = fmin(255, (fmax(0,pow(color[0], 1.0/2.2))));  //coordonnée rouge
