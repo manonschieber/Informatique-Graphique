@@ -73,10 +73,11 @@ Vector cross(const Vector& a, const Vector& b) {   //produit vectoriel
     return Vector(a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]);
 }
 
+std::random_device rd;
+std::default_random_engine eng(rd());
+std::uniform_real_distribution<float> distr(0, 1);
+
 Vector randomcos(const Vector&N){
-    std::random_device rd;
-    std::default_random_engine eng(rd());
-    std::uniform_real_distribution<float> distr(0, 1);
     setprecision(6);
     double t1=distr(eng);
     double t2=distr(eng);
@@ -239,9 +240,6 @@ Vector getColor(const Ray &r, const Scene &scene, int nombre_rebond){   //renvoi
         bool isInter = scene.intersection(r2,P2,N2, sphere_inter_id2);
         double distance2 = (scene.lumiere->O-P).norm();
         if (isInter && 0.99*distance > distance2){  //une intersection est trouvée 
-            Vector A = scene.lumiere->O - P2;
-            double B = (scene.lumiere->O - P2).norm2();  //vecteur unitaire qui part de P et se dirige vers la lumière 
-            A.normalize();
             intensite_pixel = Vector(0,0,0);
         } else {
             intensite_pixel = (scene.intensite)/(4*M_PI*distance)*fmax(0,dot(N,wi))*dot(direction_aleatoire, -wi)*dot(axe, direction_aleatoire)*scene.spheres[sphere_inter_id].C;
@@ -282,10 +280,10 @@ int main() {
     scene.ajoutersphere(s5);
  
     scene.lumiere = &lumiere;
-    scene.intensite = 50000000;
+    scene.intensite = 100000000;
     Vector position_camera(0,0,55);  //origine du vecteur vision
-    double focus = 0;  // tout ce qui est avant ou après cette distance là sera plus floue
-    int nbrayons = 2; 
+    double focus = 55;  // tout ce qui est avant ou après cette distance là sera plus floue
+    int nbrayons = 100; 
 
     std::vector<unsigned char> image(W * H * 3, 0);
     #pragma omp parallel for 
