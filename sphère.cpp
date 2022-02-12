@@ -117,9 +117,22 @@ class Source {
 		Vector O;
 };
 
-class Sphere {  //une origine et un rayon
+class Object { 
 public:
-    Sphere(const Vector& origine, const double rayon, const Vector couleur, bool isMirror = false, bool isTransparent = false) : O(origine), R(rayon) , C(couleur), isMirror(isMirror), isTransparent(isTransparent){};
+	Object() {};
+    virtual bool intersect(const Ray& r, Vector& P, Vector& N, double& t) const = 0;
+    Vector albedo;
+    bool isMirror;
+    bool isTransparent;
+};
+
+class Sphere : public Object{  //une origine et un rayon
+public:
+    Sphere(const Vector& origine, const double rayon, const Vector couleur, bool isMirror = false, bool isTransparent = false) : O(origine), R(rayon){
+        albedo = couleur; 
+        isMirror = isMirror; 
+        isTransparent = isTransparent;
+    };
     bool intersect(const Ray& r, Vector& P, Vector& N, double& t) const {
     //P la position, N la normale 
     double a = 1;
@@ -148,26 +161,72 @@ public:
 };
     Vector O;
     double R;
-    Vector C;
-    bool isMirror;
-    bool isTransparent;
 };
+
+class Triangle : public Object { 
+public:
+    Triangle(const Vector& A, const Vector& B, const Vector& C, const Vector couleur, bool isMirror = false, bool isTransparent = false) : A(A), B(B), C(C){
+        albedo = couleur;
+        isMirror = isMirror;
+        isTransparent = isTransparent;
+    };
+        bool intersect(const Ray& r, Vector& P, Vector& Normale, double& t) const {
+            Normale = cross(B-A, C-A);
+            Normale.normalize();
+            if (dot(r.direction, Normale) ==0){
+                return false;  // le rayon est parallèle au plan 
+            } else{
+                double t = dot(C - r.origine, Normale)/dot(r.direction, Normale);
+                if (t<0){
+                    return false;
+                } else {
+                    // formule de Cramer pour calculer les coordonnées barycentriques
+                    P = r.origine + t*r.direction;
+                    Vector v0 = B-A;
+                    Vector v1 = C-A;
+                    Vector v2 = P-A;
+
+                    double dot00 = dot(v0, v0);
+                    double dot01 = dot(v0, v1);
+                    double dot02 = dot(v0, v2);
+                    double dot11 = dot(v1, v1);
+                    double dot12 = dot(v1, v2);
+
+                    double invDenom = 1 / (dot00 * dot11 - dot01 * dot01);
+                    double u = (dot11 * dot02 - dot01 * dot12) * invDenom;
+                    double v = (dot00 * dot12 - dot01 * dot02) * invDenom;
+                    double w = 1 - u - v;
+                    // Check if point is in triangle
+                    if (u<0 || u>1){ return false; };
+                    if (v<0 || v>1){ return false; };
+                    if (w<0 || w>1){ return false; };
+                    return true;
+                }
+            }
+
+        };
+        Vector A;
+        Vector B;
+        Vector C;
+};
+
 
 class Scene {  // ensemble de sphères 
 public: 
     Scene() {};
-    void ajoutersphere(const Sphere& s) {spheres.push_back(s);}
-    std::vector<Sphere> spheres;
+    void ajoutersphere(const Sphere& s) {(Object*)objects.push_back(&s);}
+    void ajoutertriangle(const Triangle& t) {(Object*)objects.push_back(&t);}
+    std::vector<const Object*> objects;
     Sphere *lumiere;
     double intensite;
     bool intersection(const Ray& r, Vector& P, Vector& N, int& sphere_inter_id) const {   //pour toutes les sphères
-        //P la position, N la normale 
+        //P la position, N la normale
         bool inter = false;
         double min_t = 10E10;
-        for (int i=0; i<spheres.size();i++){
+        for (int i=0; i<objects.size();i++){
             Vector Pprime, Nprime;
             double t;
-            bool interprime = spheres[i].intersect(r,Pprime,Nprime,t);
+            bool interprime = objects[i]->intersect(r,Pprime,Nprime,t);
             if (interprime){  //il y a bien une intersection avec cette sphère
                 inter = true;
                 if (t < min_t){   //la sphère est plus proche 
@@ -188,12 +247,12 @@ Vector getColor(const Ray &r, const Scene &scene, int nombre_rebond){   //renvoi
     Vector intensite_pixel(0,0,0);
 
 	if (scene.intersection(r,P,N, sphere_inter_id) == true){  //une intersection est trouvée 
-        if (scene.spheres[sphere_inter_id].isMirror && nombre_rebond>0){  //sphère miroir
+        if (scene.objects[sphere_inter_id]->isMirror && nombre_rebond>0){  //sphère miroir
             Vector direction_miroir = r.direction - 2*dot(N,r.direction)*N;
             Ray rayon_miroir(P+0.001*N, direction_miroir);
             intensite_pixel = getColor(rayon_miroir, scene, nombre_rebond -1);  
         };
-        if (scene.spheres[sphere_inter_id].isTransparent && nombre_rebond>0){  //sphère transparente
+        if (scene.objects[sphere_inter_id]->isTransparent && nombre_rebond>0){  //sphère transparente
             double indice1=1;   //air
             double indice2 = 1.3;   //verre
             Vector normale_transparence(N);
@@ -209,22 +268,6 @@ Vector getColor(const Ray &r, const Scene &scene, int nombre_rebond){   //renvoi
                 intensite_pixel = getColor(rayon_refracte, scene, nombre_rebond -1);  //un rebond de moins    
             ;}
         };
-        // if (scene.spheres[sphere_inter_id].isDiffuse && nombre_rebond>0){  //sphère diffuse
-            
-        // };
-        // if (scene.spheres[sphere_inter_id].isEmissive){  //sphère diffuse
-            
-        // };
-        // //CONTRIBUTION DIRECTE : pas de sphère transparente, ni miroir
-
-        // double distance = (P-P2).norm();
-        // double distance2 = (scene.source-P).norm();
-        // if (isInter == false || distance > distance2){  //une intersection est trouvée 
-        //     Vector A = scene.source - P;
-        //     double B = (scene.source - P).norm2();  //vecteur unitaire qui part de P et se dirige vers la lumière 
-        //     A.normalize();
-        //     intensite_pixel = scene.spheres[sphere_inter_id].C/M_PI*scene.intensite*fmax(0,dot(A,N))/B;
-        // }
         Vector axe = P-scene.lumiere->O;
         axe.normalize();
         Vector direction_aleatoire = randomcos(axe);
@@ -242,13 +285,13 @@ Vector getColor(const Ray &r, const Scene &scene, int nombre_rebond){   //renvoi
         if (isInter && 0.99*distance > distance2){  //une intersection est trouvée 
             intensite_pixel = Vector(0,0,0);
         } else {
-            intensite_pixel = (scene.intensite)/(4*M_PI*distance)*fmax(0,dot(N,wi))*dot(direction_aleatoire, -wi)*dot(axe, direction_aleatoire)*scene.spheres[sphere_inter_id].C;
+            intensite_pixel = (scene.intensite)/(4*M_PI*distance)*fmax(0,dot(N,wi))*dot(direction_aleatoire, -wi)*dot(axe, direction_aleatoire)*scene.objects[sphere_inter_id]->albedo;
         };
 
         // //CONTRIBUTION INDIRECTE
         Vector direction_aleatoire2 = randomcos(N);
         Ray rayon_aleatoire(P+0.001*N, direction_aleatoire2);
-        intensite_pixel= intensite_pixel + getColor(rayon_aleatoire, scene, nombre_rebond -1)*scene.spheres[sphere_inter_id].C;  
+        intensite_pixel= intensite_pixel + getColor(rayon_aleatoire, scene, nombre_rebond -1)*scene.objects[sphere_inter_id]->albedo;  
     };
     return intensite_pixel;
 };
@@ -258,8 +301,8 @@ int main() {
     int H = 512;
 
     Sphere lumiere(Vector(-10, 40, 40),15, Vector(1,1,1));
-	Sphere s(Vector(-12,0,0),10, Vector(1,1,1), false, false);   //spère bleue 
-	Sphere sbis(Vector(12,0,0),10, Vector(0,0,1), false, false);
+	//Sphere s(Vector(-12,0,0),10, Vector(1,0,1), false, false);   //spère bleue 
+	//Sphere sbis(Vector(12,0,0),10, Vector(0,0,1), false, false);
 	double fov=60*M_PI/180.;   //champ visuel 
 	double tanfov2 = tan(fov/2);
 
@@ -268,22 +311,25 @@ int main() {
     Sphere s3(Vector(-2000-25,0,0), 2000, Vector(1,1,1));  //mur à gauche 
     Sphere s4(Vector(2000+25,0,0), 2000, Vector(1,1,1));  //mur à droite 
     Sphere s5(Vector(0,0,-2000-25), 2000, Vector(1,1,1));  //mur au fond 
+    
+    Triangle triangle(Vector(-10, -10, -20), Vector(10, -10, -20),Vector(0, 10, -20), Vector(1,0,0));
 
     Scene scene;
     scene.ajoutersphere(lumiere);
-    scene.ajoutersphere(s);
-    scene.ajoutersphere(sbis);
+    //scene.ajoutersphere(s);
+    //scene.ajoutersphere(sbis);
     scene.ajoutersphere(s1);
     scene.ajoutersphere(s2);
     scene.ajoutersphere(s3);
     scene.ajoutersphere(s4);
     scene.ajoutersphere(s5);
+    scene.ajoutertriangle(triangle);
  
     scene.lumiere = &lumiere;
     scene.intensite = 100000000;
     Vector position_camera(0,0,55);  //origine du vecteur vision
     double focus = 55;  // tout ce qui est avant ou après cette distance là sera plus floue
-    int nbrayons = 100; 
+    int nbrayons = 5; 
 
     std::vector<unsigned char> image(W * H * 3, 0);
     #pragma omp parallel for 
