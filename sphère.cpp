@@ -214,8 +214,8 @@ public:
 class Scene {  // ensemble de sphères 
 public: 
     Scene() {};
-    void ajoutersphere(const Sphere& s) {(Object*)objects.push_back(&s);}
-    void ajoutertriangle(const Triangle& t) {(Object*)objects.push_back(&t);}
+    void ajoutersphere(const Sphere& s) {objects.push_back((const Object*)&s);}
+    void ajoutertriangle(const Triangle& t) {objects.push_back((const Object*)&t);}
     std::vector<const Object*> objects;
     Sphere *lumiere;
     double intensite;
@@ -301,8 +301,8 @@ int main() {
     int H = 512;
 
     Sphere lumiere(Vector(-10, 40, 40),15, Vector(1,1,1));
-	//Sphere s(Vector(-12,0,0),10, Vector(1,0,1), false, false);   //spère bleue 
-	//Sphere sbis(Vector(12,0,0),10, Vector(0,0,1), false, false);
+	// Sphere s(Vector(-12,0,0),10, Vector(1,0,1), false, false);   //spère bleue 
+	// Sphere sbis(Vector(12,0,0),10, Vector(0,0,1), false, false);
 	double fov=60*M_PI/180.;   //champ visuel 
 	double tanfov2 = tan(fov/2);
 
@@ -312,7 +312,7 @@ int main() {
     Sphere s4(Vector(2000+25,0,0), 2000, Vector(1,1,1));  //mur à droite 
     Sphere s5(Vector(0,0,-2000-25), 2000, Vector(1,1,1));  //mur au fond 
     
-    Triangle triangle(Vector(-10, -10, -20), Vector(10, -10, -20),Vector(0, 10, -20), Vector(1,0,0));
+    Triangle triangle(Vector(-12, 0, 0), Vector(12, 0, 0),Vector(0, 7, 0), Vector(1,0,0));
 
     Scene scene;
     scene.ajoutersphere(lumiere);
@@ -329,7 +329,7 @@ int main() {
     scene.intensite = 100000000;
     Vector position_camera(0,0,55);  //origine du vecteur vision
     double focus = 55;  // tout ce qui est avant ou après cette distance là sera plus floue
-    int nbrayons = 5; 
+    int nbrayons = 2; 
 
     std::vector<unsigned char> image(W * H * 3, 0);
     #pragma omp parallel for 
