@@ -173,41 +173,37 @@ public:
         bool intersect(const Ray& r, Vector& P, Vector& Normale, double& t) const {
             Normale = cross(B-A, C-A);
             Normale.normalize();
-            if (dot(r.direction, Normale) ==0){
-                return false;  // le rayon est parallèle au plan 
-            } else{
-                double t = dot(C - r.origine, Normale)/dot(r.direction, Normale);
-                if (t<0){
-                    return false;
-                } else {
-                    // formule de Cramer pour calculer les coordonnées barycentriques
-                    P = r.origine + t*r.direction;
-                    Vector v0 = B-A;
-                    Vector v1 = C-A;
-                    Vector v2 = P-A;
+            t = dot(C - r.origine, Normale)/dot(r.direction, Normale);
+            P = r.origine + t*r.direction;
+            if (t<0){
+                return false;
+            } else {
+                // formule de Cramer pour calculer les coordonnées barycentriques
+                Vector v0 = B-A;
+                Vector v1 = C-A;
+                Vector v2 = P-A;
 
-                    double dot00 = dot(v0, v0);
-                    double dot01 = dot(v0, v1);
-                    double dot02 = dot(v0, v2);
-                    double dot11 = dot(v1, v1);
-                    double dot12 = dot(v1, v2);
+                double dot00 = dot(v0, v0);
+                double dot01 = dot(v0, v1);
+                double dot02 = dot(v0, v2);
+                double dot11 = dot(v1, v1);
+                double dot12 = dot(v1, v2);
 
-                    double invDenom = 1 / (dot00 * dot11 - dot01 * dot01);
-                    double u = (dot11 * dot02 - dot01 * dot12) * invDenom;
-                    double v = (dot00 * dot12 - dot01 * dot02) * invDenom;
-                    double w = 1 - u - v;
-                    // Check if point is in triangle
-                    if (u<0 || u>1){ return false; };
-                    if (v<0 || v>1){ return false; };
-                    if (w<0 || w>1){ return false; };
-                    return true;
-                }
-            }
+                double invDenom = 1 / (dot00 * dot11 - dot01 * dot01);
+                double u = (dot11 * dot02 - dot01 * dot12) * invDenom;
+                double v = (dot00 * dot12 - dot01 * dot02) * invDenom;
+                double w = 1 - u - v;
+                // Check if point is in triangle
+                if (u<0 || u>1){ return false; };
+                if (v<0 || v>1){ return false; };
+                if (w<0 || w>1){ return false; };
+                return true;             
+        }
 
-        };
-        Vector A;
-        Vector B;
-        Vector C;
+    };
+    Vector A;
+    Vector B;
+    Vector C;
 };
 
 
@@ -297,7 +293,7 @@ Vector getColor(const Ray &r, const Scene &scene, int nombre_rebond){   //renvoi
 };
 
 int main() {
-    int W = 512;
+int W = 512;
     int H = 512;
 
     Sphere lumiere(Vector(-10, 40, 40),15, Vector(1,1,1));
