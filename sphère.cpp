@@ -173,12 +173,12 @@ public:
 
 class TriangleIndices {
 public:
-    TriangleIndices(int vtxi = -1, int vtxj = -1, int vtxk = -1, int ni = -1, int nj = -1, int nk = -1, int uvi = -1, int uvj = -1, int uvk = -1) : vtxi(vtxi), vtxj(vtxj), vtxk(vtxk), uvi(uvi), uvj(uvj), uvk(uvk), ni(ni), nj(nj), nk(nk) {
+    TriangleIndices(int vtxi = -1, int vtxj = -1, int vtxk = -1, int ni = -1, int nj = -1, int nk = -1, int uvi = -1, int uvj = -1, int uvk = -1, int group = -1, bool added = false) : vtxi(vtxi), vtxj(vtxj), vtxk(vtxk), uvi(uvi), uvj(uvj), uvk(uvk), ni(ni), nj(nj), nk(nk), group(group) {
     };
-    int vtxi, vtxj, vtxk;
-    int uvi, uvj, uvk;
-    int ni, nj, nk;
-    int faceGroup;
+    int vtxi, vtxj, vtxk; // indices within the vertex coordinates array
+    int uvi, uvj, uvk;  // indices within the uv coordinates array
+    int ni, nj, nk;  // indices within the normals array
+    int group;       // face group
 };
 
 class Box {
@@ -210,11 +210,12 @@ public:
         }
     };
 };
- 
-class Geometry : public Object{
+
+class TriangleMesh : public Object {
 public:
-    Geometry() {};
-    Geometry(const char* obj, double scaling, const Vector& offset, const Vector& couleur, bool isMirror = false, bool isTransparent = false) {
+  ~TriangleMesh() {}
+    TriangleMesh() {};
+    TriangleMesh(const char* obj, double scaling, const Vector& offset, const Vector& couleur, bool isMirror = false, bool isTransparent = false) {
         albedo = couleur;
         isMirror = isMirror;
         isTransparent = isTransparent;
@@ -222,8 +223,8 @@ public:
         for (int i = 0; i < vertices.size(); i++) {
             vertices[i] = vertices[i] * scaling + offset;
         }
-    }
- 
+    };
+    
     void readOBJ(const char* obj) {
  
         char matfile[255];
@@ -231,8 +232,6 @@ public:
  
         FILE* f;
         f = fopen(obj, "r");
- 
-        std::map<std::string, int> groupNames;
         int curGroup = -1;
         while (!feof(f)) {
             char line[255];
@@ -244,33 +243,29 @@ public:
  
             if (line[0] == 'u' && line[1] == 's') {
                 sscanf(line, "usemtl %[^\n]\n", grp);
-                if (groupNames.find(std::string(grp)) != groupNames.end()) {
-                    curGroup = groupNames[std::string(grp)];
-                }
-                else {
-                    curGroup = groupNames.size();
-                    groupNames[std::string(grp)] = curGroup;
-                }
+                curGroup++;
             }
-            if (line[0] == 'm' && line[1] == 't' && line[2] == 'l') {
-                sscanf(line, "mtllib %[^\n]\n", matfile);
-            }
+ 
             if (line[0] == 'v' && line[1] == ' ') {
                 Vector vec;
+ 
                 Vector col;
-                if (sscanf(line, "v %lf %lf %lf %lf %lf %lf\n", &vec[0], &vec[2], &vec[1], &col[0], &col[1], &col[2]) == 6) {
+                if (sscanf(line, "v %lf %lf %lf %lf %lf %lf\n", &vec[0], &vec[1], &vec[2], &col[0], &col[1], &col[2]) == 6) {
+                    col[0] = std::min(1., std::max(0., col[0]));
+                    col[1] = std::min(1., std::max(0., col[1]));
+                    col[2] = std::min(1., std::max(0., col[2]));
+ 
                     vertices.push_back(vec);
                     vertexcolors.push_back(col);
-                }
-                else {
-                    sscanf(line, "v %lf %lf %lf\n", &vec[0], &vec[2], &vec[1]);  // helmet
-                                                                                 //vec[2] = -vec[2]; //car2
+ 
+                } else {
+                    sscanf(line, "v %lf %lf %lf\n", &vec[0], &vec[1], &vec[2]);
                     vertices.push_back(vec);
                 }
             }
             if (line[0] == 'v' && line[1] == 'n') {
                 Vector vec;
-                sscanf(line, "vn %lf %lf %lf\n", &vec[0], &vec[2], &vec[1]); //girl
+                sscanf(line, "vn %lf %lf %lf\n", &vec[0], &vec[1], &vec[2]);
                 normals.push_back(vec);
             }
             if (line[0] == 'v' && line[1] == 't') {
@@ -284,10 +279,11 @@ public:
                 int j0, j1, j2, j3;
                 int k0, k1, k2, k3;
                 int nn;
+                t.group = curGroup;
  
                 char* consumedline = line + 1;
                 int offset;
-                t.faceGroup = curGroup;
+ 
                 nn = sscanf(consumedline, "%u/%u/%u %u/%u/%u %u/%u/%u%n", &i0, &j0, &k0, &i1, &j1, &k1, &i2, &j2, &k2, &offset);
                 if (nn == 9) {
                     if (i0 < 0) t.vtxi = vertices.size() + i0; else t.vtxi = i0 - 1;
@@ -299,10 +295,8 @@ public:
                     if (k0 < 0) t.ni = normals.size() + k0; else    t.ni = k0 - 1;
                     if (k1 < 0) t.nj = normals.size() + k1; else    t.nj = k1 - 1;
                     if (k2 < 0) t.nk = normals.size() + k2; else    t.nk = k2 - 1;
- 
                     indices.push_back(t);
-                }
-                else {
+                } else {
                     nn = sscanf(consumedline, "%u/%u %u/%u %u/%u%n", &i0, &j0, &i1, &j1, &i2, &j2, &offset);
                     if (nn == 6) {
                         if (i0 < 0) t.vtxi = vertices.size() + i0; else t.vtxi = i0 - 1;
@@ -312,16 +306,14 @@ public:
                         if (j1 < 0) t.uvj = uvs.size() + j1; else   t.uvj = j1 - 1;
                         if (j2 < 0) t.uvk = uvs.size() + j2; else   t.uvk = j2 - 1;
                         indices.push_back(t);
-                    }
-                    else {
+                    } else {
                         nn = sscanf(consumedline, "%u %u %u%n", &i0, &i1, &i2, &offset);
                         if (nn == 3) {
                             if (i0 < 0) t.vtxi = vertices.size() + i0; else t.vtxi = i0 - 1;
                             if (i1 < 0) t.vtxj = vertices.size() + i1; else t.vtxj = i1 - 1;
                             if (i2 < 0) t.vtxk = vertices.size() + i2; else t.vtxk = i2 - 1;
                             indices.push_back(t);
-                        }
-                        else {
+                        } else {
                             nn = sscanf(consumedline, "%u//%u %u//%u %u//%u%n", &i0, &k0, &i1, &k1, &i2, &k2, &offset);
                             if (i0 < 0) t.vtxi = vertices.size() + i0; else t.vtxi = i0 - 1;
                             if (i1 < 0) t.vtxj = vertices.size() + i1; else t.vtxj = i1 - 1;
@@ -334,7 +326,6 @@ public:
                     }
                 }
  
- 
                 consumedline = consumedline + offset;
  
                 while (true) {
@@ -342,7 +333,7 @@ public:
                     if (consumedline[0] == '\0') break;
                     nn = sscanf(consumedline, "%u/%u/%u%n", &i3, &j3, &k3, &offset);
                     TriangleIndices t2;
-                    t2.faceGroup = curGroup;
+                    t2.group = curGroup;
                     if (nn == 3) {
                         if (i0 < 0) t2.vtxi = vertices.size() + i0; else    t2.vtxi = i0 - 1;
                         if (i2 < 0) t2.vtxj = vertices.size() + i2; else    t2.vtxj = i2 - 1;
@@ -358,8 +349,7 @@ public:
                         i2 = i3;
                         j2 = j3;
                         k2 = k3;
-                    }
-                    else {
+                    } else {
                         nn = sscanf(consumedline, "%u/%u%n", &i3, &j3, &offset);
                         if (nn == 2) {
                             if (i0 < 0) t2.vtxi = vertices.size() + i0; else    t2.vtxi = i0 - 1;
@@ -372,8 +362,7 @@ public:
                             i2 = i3;
                             j2 = j3;
                             indices.push_back(t2);
-                        }
-                        else {
+                        } else {
                             nn = sscanf(consumedline, "%u//%u%n", &i3, &k3, &offset);
                             if (nn == 2) {
                                 if (i0 < 0) t2.vtxi = vertices.size() + i0; else    t2.vtxi = i0 - 1;
@@ -381,13 +370,12 @@ public:
                                 if (i3 < 0) t2.vtxk = vertices.size() + i3; else    t2.vtxk = i3 - 1;
                                 if (k0 < 0) t2.ni = normals.size() + k0; else   t2.ni = k0 - 1;
                                 if (k2 < 0) t2.nj = normals.size() + k2; else   t2.nj = k2 - 1;
-                                if (k3 < 0) t2.nk = normals.size() + k3; else   t2.nk = k3 - 1;
+                                if (k3 < 0) t2.nk = normals.size() + k3; else   t2.nk = k3 - 1;                             
                                 consumedline = consumedline + offset;
                                 i2 = i3;
                                 k2 = k3;
                                 indices.push_back(t2);
-                            }
-                            else {
+                            } else {
                                 nn = sscanf(consumedline, "%u%n", &i3, &offset);
                                 if (nn == 1) {
                                     if (i0 < 0) t2.vtxi = vertices.size() + i0; else    t2.vtxi = i0 - 1;
@@ -396,8 +384,7 @@ public:
                                     consumedline = consumedline + offset;
                                     i2 = i3;
                                     indices.push_back(t2);
-                                }
-                                else {
+                                } else {
                                     consumedline = consumedline + 1;
                                 }
                             }
@@ -407,75 +394,35 @@ public:
  
             }
  
- 
         }
         fclose(f);
-
-        // Calcul de la boîte englobante : permet d'aller plus vite dans les calculs 
-        bb.bmax = vertices[0];
-        bb.bmin = vertices[0];
-        for(int i=1; i < vertices.size(); i++){
-            for(int j=0; j < 3; j++){
-                bb.bmin[j] = std::min(bb.bmin[j], vertices[i][j]);
-                bb.bmax[j] = std::max(bb.bmax[j], vertices[i][j]);
-            }
-        };
-    };
  
- 
-    void add_texture(const char* filename) {
- 
-        textures.resize(textures.size() + 1);
-        w.resize(w.size() + 1);
-        h.resize(h.size() + 1);
- 
-        FILE* f;
-        f = fopen(filename, "rb");
-        unsigned char info[54];
-        fread(info, sizeof(unsigned char), 54, f); // read the 54-byte header
- 
-        w[w.size() - 1] = *(int*)&info[18]; // extract image height and width from header
-        h[h.size() - 1] = *(int*)&info[22];
- 
-        int size = 3 * w[w.size() - 1] * h[h.size() - 1];
-        textures[textures.size() - 1].resize(size); // allocate 3 bytes per pixel
-        fread(&textures[textures.size() - 1][0], sizeof(unsigned char), size, f); // read the rest of the data at once
-        fclose(f);
- 
-        for (int i = 0; i < size; i += 3) {
-            std::swap(textures[textures.size() - 1][i], textures[textures.size() - 1][i + 2]);
-        }
     }
  
     std::vector<TriangleIndices> indices;
-    std::vector<int> faces;
     std::vector<Vector> vertices;
     std::vector<Vector> normals;
-    std::vector<Vector> uvs; // Vector en 3D mais on n'utilise que 2 composantes
+    std::vector<Vector> uvs;
     std::vector<Vector> vertexcolors;
- 
-    std::vector<std::vector<unsigned char> > textures;
-    std::vector<int> w, h;
+    
     bool intersect(const Ray& r, Vector& P, Vector& N, double& t) const{
-        if (!bb.intersect(r)) return false;
+        //if (!bb.intersect(r)) return false;
 
         t = 1e99;
         bool has_inter = false;
-        for(int i=0; i<faces.size()/3; i++){
-            int i0 = faces[i+3];
-            int i1 = faces[i+3+1];
-            int i2 = faces[i+3+2];
-            Triangle triangle(vertices[i0],vertices[i1],vertices[i2], albedo, isMirror, isTransparent);
+        for(int i=0; i<indices.size()/3; i++){
+            TriangleIndices A = indices[i];
+            //Triangle triangle(vertices[i0],vertices[i1],vertices[i2], albedo, isMirror, isTransparent);
             Vector localP, localN;
             double localt;
-            if (triangle.intersect(r,localP, localN, localt)){
-                has_inter = true;
-                if (localt < t){
-                    t = localt;
-                    P = localP;
-                    N = localN;
-                }
-            }
+            // if (triangle.intersect(r,localP, localN, localt)){
+            //     has_inter = true;
+            //     if (localt < t){
+            //         t = localt;
+            //         P = localP;
+            //         N = localN;
+            //     }
+            // }
         }
         return has_inter;
     };
@@ -526,7 +473,7 @@ public:
     Scene() {};
     void ajoutersphere(const Sphere& s) {objects.push_back((const Object*)&s);}
     void ajoutertriangle(const Triangle& t) {objects.push_back((const Object*)&t);}
-    void ajoutergeometry(const Geometry& g) {objects.push_back((const Object*)&g);}
+    void ajoutergeometry(const TriangleMesh& g) {objects.push_back((const Object*)&g);}
     std::vector<const Object*> objects;
     Sphere *lumiere;
     double intensite;
@@ -622,10 +569,9 @@ int W = 512;
     Sphere s3(Vector(-2000-25,0,0), 2000, Vector(1,1,1));  //mur à gauche 
     Sphere s4(Vector(2000+25,0,0), 2000, Vector(1,1,1));  //mur à droite 
     Sphere s5(Vector(0,0,-2000-25), 2000, Vector(1,1,1));  //mur au fond 
-    
-    //Triangle triangle(Vector(-12, 0, 0), Vector(12, 0, 0),Vector(0, 7, 0), Vector(1,0,0));
+     
 
-    Geometry arbre("Tree1/Tree1.obj", 1, Vector(-12,0,0), Vector(0,1,0));
+    TriangleMesh arbre("Tree1/Tree1.obj", 30, Vector(0,0,0), Vector(0,1,0));
 
     Scene scene;
     scene.ajoutersphere(lumiere);
