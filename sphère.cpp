@@ -406,23 +406,25 @@ public:
     std::vector<Vector> vertexcolors;
     
     bool intersect(const Ray& r, Vector& P, Vector& N, double& t) const{
-        //if (!bb.intersect(r)) return false;
+        if (!bb.intersect(r)) return false;
 
         t = 1e99;
         bool has_inter = false;
         for(int i=0; i<indices.size()/3; i++){
-            TriangleIndices A = indices[i];
-            //Triangle triangle(vertices[i0],vertices[i1],vertices[i2], albedo, isMirror, isTransparent);
+            int i0 = indices[i].vtxi;
+            int i1 = indices[i].vtxj;
+            int i2 = indices[i].vtxk;
+            Triangle triangle(vertices[i0],vertices[i1],vertices[i2], albedo, isMirror, isTransparent);
             Vector localP, localN;
             double localt;
-            // if (triangle.intersect(r,localP, localN, localt)){
-            //     has_inter = true;
-            //     if (localt < t){
-            //         t = localt;
-            //         P = localP;
-            //         N = localN;
-            //     }
-            // }
+            if (triangle.intersect(r,localP, localN, localt)){
+                has_inter = true;
+                if (localt < t){
+                    t = localt;
+                    P = localP;
+                    N = localN;
+                }
+            }
         }
         return has_inter;
     };
