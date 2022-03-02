@@ -138,37 +138,36 @@ public:
         bool intersect(const Ray& r, Vector& P, Vector& Normale, double& t) const {
             Normale = cross(B-A, C-A);
             Normale.normalize();
-            t = dot(C - r.origine, Normale)/dot(r.direction, Normale);
+            double x = dot(r.direction, Normale);
+            if(x==0){return false;}
+            t = dot(C - r.origine, Normale)/x;
             P = r.origine + t*r.direction;
-            if (t<0){
-                return false;
-            } else {
-                // formule de Cramer pour calculer les coordonnées barycentriques
-                Vector v0 = B-A;
-                Vector v1 = C-A;
-                Vector v2 = P-A;
+            if (t<0){ return false;}
+            // formule de Cramer pour calculer les coordonnées barycentriques
+            Vector v0 = B-A;
+            Vector v1 = C-A;
+            Vector v2 = P-A;
 
-                double dot00 = dot(v0, v0);
-                double dot01 = dot(v0, v1);
-                double dot02 = dot(v0, v2);
-                double dot11 = dot(v1, v1);
-                double dot12 = dot(v1, v2);
+            double dot00 = dot(v0, v0);
+            double dot01 = dot(v0, v1);
+            double dot02 = dot(v0, v2);
+            double dot11 = dot(v1, v1);                
+            double dot12 = dot(v1, v2);
 
-                double invDenom = 1 / (dot00 * dot11 - dot01 * dot01);
-                double u = (dot11 * dot02 - dot01 * dot12) * invDenom;
-                double v = (dot00 * dot12 - dot01 * dot02) * invDenom;
-                double w = 1 - u - v;
-                // Check if point is in triangle
-                if (u<0 || u>1){ return false; };
-                if (v<0 || v>1){ return false; };
-                if (w<0 || w>1){ return false; };
-                return true;             
-        }
+            double invDenom = 1 / (dot00 * dot11 - dot01 * dot01);
+            double u = (dot11 * dot02 - dot01 * dot12) * invDenom;
+            double v = (dot00 * dot12 - dot01 * dot02) * invDenom;
+            double w = 1 - u - v;                
+            // Check if point is in triangle
+            if (u<0 || u>1){ return false; };
+            if (v<0 || v>1){ return false; };
+            if (w<0 || w>1){ return false; };
+            return true;             
 
     };
-    const Vector &A;
-    const Vector &B;
-    const Vector &C;
+    const Vector A;
+    const Vector B;
+    const Vector C;
 };
 
 class TriangleIndices {
@@ -396,8 +395,16 @@ public:
  
         }
         fclose(f);
- 
-    }
+
+        bb.bmax = vertices[0];
+        bb.bmin = vertices[0];
+        for (int i=1; i<vertices.size();i++){
+            for (int j=1; j<vertices.size();j++){
+                bb.bmin[j]  = std::min(bb.bmin[j], vertices[i][j]);
+                bb.bmax[j]  = std::max(bb.bmax[j], vertices[i][j]);
+            }
+        }
+    };
  
     std::vector<TriangleIndices> indices;
     std::vector<Vector> vertices;
@@ -410,10 +417,14 @@ public:
 
         t = 1e99;
         bool has_inter = false;
-        for(int i=0; i<indices.size()/3; i++){
+        for(int i=0; i<indices.size(); i++){
             int i0 = indices[i].vtxi;
             int i1 = indices[i].vtxj;
             int i2 = indices[i].vtxk;
+            Vector x = vertices[i0];
+            Vector y = vertices[i1];
+            Vector z = vertices[i2];
+
             Triangle triangle(vertices[i0],vertices[i1],vertices[i2], albedo, isMirror, isTransparent);
             Vector localP, localN;
             double localt;
@@ -505,6 +516,9 @@ Vector getColor(const Ray &r, const Scene &scene, int nombre_rebond){   //renvoi
     Vector P,N; //vecteurs position et normal
     int sphere_inter_id;
     Vector intensite_pixel(0,0,0);
+    if (nombre_rebond == 0){return intensite_pixel;}
+    if (nombre_rebond < 0){return intensite_pixel;}
+    
 
 	if (scene.intersection(r,P,N, sphere_inter_id) == true){  //une intersection est trouvée 
         if (scene.objects[sphere_inter_id]->isMirror && nombre_rebond>0){  //sphère miroir
@@ -557,8 +571,8 @@ Vector getColor(const Ray &r, const Scene &scene, int nombre_rebond){   //renvoi
 };
 
 int main() {
-int W = 512;
-    int H = 512;
+    int W = 1;
+    int H = 1;
 
     Sphere lumiere(Vector(-10, 40, 40),15, Vector(1,1,1));
 	// Sphere s(Vector(-12,0,0),10, Vector(1,0,1), false, false);   //spère bleue 
@@ -573,7 +587,7 @@ int W = 512;
     Sphere s5(Vector(0,0,-2000-25), 2000, Vector(1,1,1));  //mur au fond 
      
 
-    TriangleMesh arbre("Tree1/Tree1.obj", 30, Vector(0,0,0), Vector(0,1,0));
+    TriangleMesh arbre("dog/13463_Australian_Cattle_Dog_v3.obj", 30, Vector(0,0,0), Vector(0,1,0));
 
     Scene scene;
     scene.ajoutersphere(lumiere);
@@ -591,7 +605,8 @@ int W = 512;
     scene.intensite = 100000000;
     Vector position_camera(0,0,55);  //origine du vecteur vision
     double focus = 55;  // tout ce qui est avant ou après cette distance là sera plus floue
-    int nbrayons = 2; 
+    int nbrayons = 1; 
+    int nbrebonds = 1;
 
     std::vector<unsigned char> image(W * H * 3, 0);
     #pragma omp parallel for 
@@ -617,7 +632,7 @@ int W = 512;
                 Vector a = mise_au_point - nouvelle_origine;
                 a.normalize();
                 Ray r(nouvelle_origine,a);  //rayon de la vision
-                color = color + getColor(r, scene, 5)/nbrayons;
+                color = color + getColor(r, scene, nbrebonds)/nbrayons;
             };
 
 			image[((H-i-1) * W + j) * 3 + 0] = fmin(255, (fmax(0,pow(color[0], 1.0/2.2))));  //coordonnée rouge
