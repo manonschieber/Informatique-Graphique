@@ -399,7 +399,7 @@ public:
         bb.bmax = vertices[0];
         bb.bmin = vertices[0];
         for (int i=1; i<vertices.size();i++){
-            for (int j=1; j<vertices.size();j++){
+            for (int j=0; j<3;j++){
                 bb.bmin[j]  = std::min(bb.bmin[j], vertices[i][j]);
                 bb.bmax[j]  = std::max(bb.bmax[j], vertices[i][j]);
             }
@@ -448,8 +448,8 @@ class Sphere : public Object{  //une origine et un rayon
 public:
     Sphere(const Vector& origine, const double rayon, const Vector couleur, bool isMirror = false, bool isTransparent = false) : O(origine), R(rayon){
         albedo = couleur; 
-        isMirror = isMirror; 
-        isTransparent = isTransparent;
+        this -> isMirror = isMirror; 
+        this -> isTransparent = isTransparent;
     };
     bool intersect(const Ray& r, Vector& P, Vector& N, double& t) const {
     //P la position, N la normale 
@@ -516,51 +516,56 @@ Vector getColor(const Ray &r, const Scene &scene, int nombre_rebond){   //renvoi
     Vector P,N; //vecteurs position et normal
     int sphere_inter_id;
     Vector intensite_pixel(0,0,0);
-    if (nombre_rebond == 0){return intensite_pixel;}
-    if (nombre_rebond < 0){return intensite_pixel;}
+    if (nombre_rebond == 0){return Vector(0,0,0);}
     
-
-	if (scene.intersection(r,P,N, sphere_inter_id) == true){  //une intersection est trouvée 
-        if (scene.objects[sphere_inter_id]->isMirror && nombre_rebond>0){  //sphère miroir
+    bool a = scene.intersection(r,P,N, sphere_inter_id);
+	if (a == true){  //une intersection est trouvée 
+        if (scene.objects[sphere_inter_id]->isMirror){  //sphère miroir
             Vector direction_miroir = r.direction - 2*dot(N,r.direction)*N;
             Ray rayon_miroir(P+0.001*N, direction_miroir);
             intensite_pixel = getColor(rayon_miroir, scene, nombre_rebond -1);  
-        };
-        if (scene.objects[sphere_inter_id]->isTransparent && nombre_rebond>0){  //sphère transparente
-            double indice1=1;   //air
-            double indice2 = 1.3;   //verre
-            Vector normale_transparence(N);
-            if (dot(r.direction, N) >0 ){   //on est en train de sortir de la sphère 
-                indice1 = 1.3;
-                indice2=1;
-                normale_transparence = -N;
-            }
-            double nombre_racine = 1 - indice1/indice2*indice1/indice2*(1-dot(normale_transparence,r.direction)*dot(normale_transparence,r.direction));
-            if (nombre_racine>0){
-                Vector direction_refracte = (indice1/indice2)*(r.direction - dot(r.direction, normale_transparence)*normale_transparence) - normale_transparence * sqrt(nombre_racine);
-                Ray rayon_refracte(P-0.001*normale_transparence, direction_refracte);
-                intensite_pixel = getColor(rayon_refracte, scene, nombre_rebond -1);  //un rebond de moins    
-            ;}
-        };
-        Vector axe = P-scene.lumiere->O;
-        axe.normalize();
-        Vector direction_aleatoire = randomcos(axe);
-        Vector point_aleatoire = direction_aleatoire * scene.lumiere->R + scene.lumiere->O;
-        Vector wi = (point_aleatoire - P);
-        wi.normalize();
-        double distance = (point_aleatoire - P).norm();
-
-        Ray r2(P+0.005*N,wi);
-        Vector P2,N2;
-        int sphere_inter_id2;
-
-        bool isInter = scene.intersection(r2,P2,N2, sphere_inter_id2);
-        double distance2 = (scene.lumiere->O-P).norm();
-        if (isInter && 0.99*distance > distance2){  //une intersection est trouvée 
-            intensite_pixel = Vector(0,0,0);
         } else {
-            intensite_pixel = (scene.intensite)/(4*M_PI*distance)*fmax(0,dot(N,wi))*dot(direction_aleatoire, -wi)*dot(axe, direction_aleatoire)*scene.objects[sphere_inter_id]->albedo;
-        };
+            if (scene.objects[sphere_inter_id]->isTransparent){  //sphère transparente
+                double indice1=1;   //air
+                double indice2 = 1.3;   //verre
+                Vector normale_transparence(N);
+                if (dot(r.direction, N) >0 ){   //on est en train de sortir de la sphère 
+                    indice1 = 1.3;
+                    indice2=1;
+                    normale_transparence = -N;
+                } else{
+                    indice1 = 1;
+                    indice2=1.3;
+                    normale_transparence = N;
+                }
+                double nombre_racine = 1 - sqrt(indice1/indice2)*(1-sqrt(dot(r.direction,normale_transparence)));
+                if (nombre_racine>0){
+                    Vector direction_refracte = (indice1/indice2)*(r.direction -dot(r.direction, normale_transparence)*normale_transparence)-normale_transparence*sqrt(nombre_racine);
+                    Ray rayon_refracte(P-0.01*normale_transparence, direction_refracte);
+                    intensite_pixel = getColor(rayon_refracte, scene, nombre_rebond -1);  //un rebond de moins    
+                ;}
+            } else{
+                Vector axe = P-scene.lumiere->O;
+                axe.normalize();
+                Vector direction_aleatoire = randomcos(axe);
+                Vector point_aleatoire = direction_aleatoire * scene.lumiere->R + scene.lumiere->O;
+                Vector wi = (point_aleatoire - P);
+                wi.normalize();
+                double distance = (point_aleatoire - P).norm();
+
+                Ray r2(P+0.005*N,wi);
+                Vector P2,N2;
+                int sphere_inter_id2;
+
+                bool isInter = scene.intersection(r2,P2,N2, sphere_inter_id2);
+                double distance2 = (scene.lumiere->O-P).norm();
+                if (isInter && 0.99*distance > distance2){  //une intersection est trouvée 
+                    intensite_pixel = Vector(0,0,0);
+                } else {
+                    intensite_pixel = (scene.intensite,2.2)/(4*M_PI*distance)*fmax(0,dot(N,wi))*dot(direction_aleatoire, -wi)*dot(axe, direction_aleatoire)*scene.objects[sphere_inter_id]->albedo;
+                };
+            }
+        }
 
         // //CONTRIBUTION INDIRECTE
         Vector direction_aleatoire2 = randomcos(N);
@@ -571,12 +576,12 @@ Vector getColor(const Ray &r, const Scene &scene, int nombre_rebond){   //renvoi
 };
 
 int main() {
-    int W = 1;
-    int H = 1;
+    int W = 512;
+    int H = 512;
 
     Sphere lumiere(Vector(-10, 40, 40),15, Vector(1,1,1));
-	// Sphere s(Vector(-12,0,0),10, Vector(1,0,1), false, false);   //spère bleue 
-	// Sphere sbis(Vector(12,0,0),10, Vector(0,0,1), false, false);
+	Sphere s(Vector(-12,0,0),10, Vector(1,0,1), true, false);   //spère bleue 
+	Sphere sbis(Vector(12,0,0),10, Vector(1,0,0), false, true);
 	double fov=60*M_PI/180.;   //champ visuel 
 	double tanfov2 = tan(fov/2);
 
@@ -587,13 +592,13 @@ int main() {
     Sphere s5(Vector(0,0,-2000-25), 2000, Vector(1,1,1));  //mur au fond 
      
 
-    TriangleMesh arbre("dog/13463_Australian_Cattle_Dog_v3.obj", 30, Vector(0,0,0), Vector(0,1,0));
+    //TriangleMesh chien("dog/13463_Australian_Cattle_Dog_v3.obj", 1, Vector(0,0,0), Vector(0,1,0));
 
     Scene scene;
     scene.ajoutersphere(lumiere);
-    scene.ajoutergeometry(arbre);
-    //scene.ajoutersphere(s);
-    //scene.ajoutersphere(sbis);
+    //scene.ajoutergeometry(chien);
+    scene.ajoutersphere(s);
+    scene.ajoutersphere(sbis);
     scene.ajoutersphere(s1);
     scene.ajoutersphere(s2);
     scene.ajoutersphere(s3);
@@ -605,8 +610,8 @@ int main() {
     scene.intensite = 100000000;
     Vector position_camera(0,0,55);  //origine du vecteur vision
     double focus = 55;  // tout ce qui est avant ou après cette distance là sera plus floue
-    int nbrayons = 1; 
-    int nbrebonds = 1;
+    int nbrayons = 8; 
+    int nbrebonds = 2;
 
     std::vector<unsigned char> image(W * H * 3, 0);
     #pragma omp parallel for 
