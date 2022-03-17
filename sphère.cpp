@@ -487,10 +487,12 @@ public:
     void ajoutersphere(const Sphere& s) {objects.push_back((const Object*)&s);}
     void ajoutertriangle(const Triangle& t) {objects.push_back((const Object*)&t);}
     void ajoutergeometry(const TriangleMesh& g) {objects.push_back((const Object*)&g);}
+
     std::vector<const Object*> objects;
     Sphere *lumiere;
     double intensite;
-    bool intersection(const Ray& r, Vector& P, Vector& N, int& sphere_inter_id) const {   //pour toutes les sphères
+
+    bool intersection(const Ray& r, Vector& P, Vector& N, int& sphere_inter_id) const {   //gestion des intersections dans le cas où l'on a plusieurs sphères
         //P la position, N la normale
         bool inter = false;
         double min_t = 10E10;
@@ -512,20 +514,21 @@ public:
     };
 };
 
-Vector getColor(const Ray &r, const Scene &scene, int nombre_rebond){   //renvoie la couleur du pixel 
+Vector getColor(const Ray &r, const Scene &scene, int nombre_rebond){   //fonction qui renvoie la couleur du pixel 
     Vector P,N; //vecteurs position et normal
     int sphere_inter_id;
     Vector intensite_pixel(0,0,0);
-    if (nombre_rebond == 0){return Vector(0,0,0);}
+    if (nombre_rebond == 0){return Vector(0,0,0);} //condition d'arrêt pour éviter une récursion infinie
+    if (nombre_rebond < 0){return Vector(0,0,0);}
     
     bool a = scene.intersection(r,P,N, sphere_inter_id);
 	if (a == true){  //une intersection est trouvée 
-        if (scene.objects[sphere_inter_id]->isMirror){  //sphère miroir
+        if (scene.objects[sphere_inter_id]->isMirror){  //surface miroir ou spéculaire
             Vector direction_miroir = r.direction - 2*dot(N,r.direction)*N;
             Ray rayon_miroir(P+0.001*N, direction_miroir);
             intensite_pixel = getColor(rayon_miroir, scene, nombre_rebond -1);  
         } else {
-            if (scene.objects[sphere_inter_id]->isTransparent){  //sphère transparente
+            if (scene.objects[sphere_inter_id]->isTransparent){  //surface transparente
                 double indice1=1;   //air
                 double indice2 = 1.3;   //verre
                 Vector normale_transparence(N);
@@ -538,7 +541,7 @@ Vector getColor(const Ray &r, const Scene &scene, int nombre_rebond){   //renvoi
                     indice2=1.3;
                     normale_transparence = N;
                 }
-                double nombre_racine = 1 - sqrt(indice1/indice2)*(1-sqrt(dot(r.direction,normale_transparence)));
+                double nombre_racine = 1 - std::pow(indice1/indice2,2)*(1-std::pow(dot(r.direction,normale_transparence),2));
                 if (nombre_racine>0){
                     Vector direction_refracte = (indice1/indice2)*(r.direction -dot(r.direction, normale_transparence)*normale_transparence)-normale_transparence*sqrt(nombre_racine);
                     Ray rayon_refracte(P-0.01*normale_transparence, direction_refracte);
@@ -562,7 +565,7 @@ Vector getColor(const Ray &r, const Scene &scene, int nombre_rebond){   //renvoi
                 if (isInter && 0.99*distance > distance2){  //une intersection est trouvée 
                     intensite_pixel = Vector(0,0,0);
                 } else {
-                    intensite_pixel = (scene.intensite,2.2)/(4*M_PI*distance)*fmax(0,dot(N,wi))*dot(direction_aleatoire, -wi)*dot(axe, direction_aleatoire)*scene.objects[sphere_inter_id]->albedo;
+                    intensite_pixel = std::pow(scene.intensite,2.2)/(4*M_PI*distance)*fmax(0,dot(N,wi))*dot(direction_aleatoire, -wi)*dot(axe, direction_aleatoire)*scene.objects[sphere_inter_id]->albedo;
                 };
             }
         }
@@ -579,17 +582,22 @@ int main() {
     int W = 512;
     int H = 512;
 
-    Sphere lumiere(Vector(-10, 40, 40),15, Vector(1,1,1));
-	Sphere s(Vector(-12,0,0),10, Vector(1,0,1), true, false);   //spère bleue 
-	Sphere sbis(Vector(12,0,0),10, Vector(1,0,0), false, true);
-	double fov=60*M_PI/180.;   //champ visuel 
+    double fov=60*M_PI/180.;   //champ visuel 
 	double tanfov2 = tan(fov/2);
+    Vector position_camera(0,0,55);  //origine du vecteur vision
+    double focus = 55;  // tout ce qui est avant ou après cette distance là sera plus floue
+    int nbrayons = 10; 
+    int nbrebonds = 4;
 
-    Sphere s1(Vector(0,-2000-10,0), 2000, Vector(0,1,1));  //sol blanc, de telle sorte à ce que la sphre soit posée sur le sol
-    Sphere s2(Vector(0,2000+25,0), 2000, Vector(0,0,1));  //plafond
-    Sphere s3(Vector(-2000-25,0,0), 2000, Vector(1,1,1));  //mur à gauche 
-    Sphere s4(Vector(2000+25,0,0), 2000, Vector(1,1,1));  //mur à droite 
-    Sphere s5(Vector(0,0,-2000-25), 2000, Vector(1,1,1));  //mur au fond 
+    Sphere lumiere(Vector(-10, 40, 40),15, Vector(1,1,1));
+	Sphere s(Vector(-12,0,0),10, Vector(0,0,1),false,false);   //spère rouge
+	Sphere sbis(Vector(12,0,0),10, Vector(0,1,0),false,false);  //sphère verte
+
+    Sphere s1(Vector(0,-2000-10,0), 2000, Vector(1,0,0));  //sol rouge, la sphère est posée dessus
+    Sphere s2(Vector(0,2000+25,0), 2000, Vector(0,0,1));  //plafond bleu
+    Sphere s3(Vector(-2000-25,0,0), 2000, Vector(1,0,1));  //mur à gauche rose
+    Sphere s4(Vector(2000+25,0,0), 2000, Vector(1,0,1));  //mur à droite rose 
+    Sphere s5(Vector(0,0,-2000-25), 2000, Vector(1,0,1));  //mur au fond rose
      
 
     //TriangleMesh chien("dog/13463_Australian_Cattle_Dog_v3.obj", 1, Vector(0,0,0), Vector(0,1,0));
@@ -604,22 +612,16 @@ int main() {
     scene.ajoutersphere(s3);
     scene.ajoutersphere(s4);
     scene.ajoutersphere(s5);
-    //scene.ajoutertriangle(triangle);
  
     scene.lumiere = &lumiere;
-    scene.intensite = 100000000;
-    Vector position_camera(0,0,55);  //origine du vecteur vision
-    double focus = 55;  // tout ce qui est avant ou après cette distance là sera plus floue
-    int nbrayons = 8; 
-    int nbrebonds = 2;
+    scene.intensite = 5000;
 
     std::vector<unsigned char> image(W * H * 3, 0);
     #pragma omp parallel for 
     for (int i = 0; i < H; i++) {   // on parcourt l'image 
         for (int j = 0; j < W; j++) {
             Vector color(0,0,0);
-            for (int k=0; k<nbrayons ; k++){  //on envoie 5 rayons au lieu d'un seul 
-                double depth = H/(2*tan(fov*0.5));
+            for (int k=0; k<nbrayons ; k++){  //on envoie nbrayons 
                 double r1 = drand48();
                 double r2 = drand48();
                 double x = sqrt(-2*log(r1))*cos(2*M_PI*r2)*0.5;
