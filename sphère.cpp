@@ -124,16 +124,16 @@ public:
 	Object() {};
     virtual bool intersect(const Ray& r, Vector& P, Vector& N, double& t) const = 0;
     Vector albedo;
-    bool isMirror;
-    bool isTransparent;
+    bool speculaire;
+    bool transparent;
 };
 
 class Triangle : public Object { 
 public:
-    Triangle(const Vector& A, const Vector& B, const Vector& C, const Vector couleur, bool isMirror = false, bool isTransparent = false) : A(A), B(B), C(C){
+    Triangle(const Vector& A, const Vector& B, const Vector& C, const Vector couleur, bool speculaire = false, bool transparent = false) : A(A), B(B), C(C){
         albedo = couleur;
-        isMirror = isMirror;
-        isTransparent = isTransparent;
+        speculaire = speculaire;
+        transparent = transparent;
     };
         bool intersect(const Ray& r, Vector& P, Vector& Normale, double& t) const {
             Normale = cross(B-A, C-A);
@@ -214,13 +214,13 @@ class TriangleMesh : public Object {
 public:
   ~TriangleMesh() {}
     TriangleMesh() {};
-    TriangleMesh(const char* obj, double scaling, const Vector& offset, const Vector& couleur, bool isMirror = false, bool isTransparent = false) {
+    TriangleMesh(const char* obj, double scaling, const Vector& offset, const Vector& couleur, bool speculaire = false, bool transparent = false) {
         albedo = couleur;
-        isMirror = isMirror;
-        isTransparent = isTransparent;
+        speculaire = speculaire;
+        transparent = transparent;
         readOBJ(obj);
-        for (int i = 0; i < vertices.size(); i++) {
-            vertices[i] = vertices[i] * scaling + offset;
+        for (int i = 0; i < chien.size(); i++) {
+            chien[i] = chien[i] * scaling + offset;
         }
     };
     
@@ -254,12 +254,12 @@ public:
                     col[1] = std::min(1., std::max(0., col[1]));
                     col[2] = std::min(1., std::max(0., col[2]));
  
-                    vertices.push_back(vec);
+                    chien.push_back(vec);
                     vertexcolors.push_back(col);
  
                 } else {
                     sscanf(line, "v %lf %lf %lf\n", &vec[0], &vec[1], &vec[2]);
-                    vertices.push_back(vec);
+                    chien.push_back(vec);
                 }
             }
             if (line[0] == 'v' && line[1] == 'n') {
@@ -285,9 +285,9 @@ public:
  
                 nn = sscanf(consumedline, "%u/%u/%u %u/%u/%u %u/%u/%u%n", &i0, &j0, &k0, &i1, &j1, &k1, &i2, &j2, &k2, &offset);
                 if (nn == 9) {
-                    if (i0 < 0) t.vtxi = vertices.size() + i0; else t.vtxi = i0 - 1;
-                    if (i1 < 0) t.vtxj = vertices.size() + i1; else t.vtxj = i1 - 1;
-                    if (i2 < 0) t.vtxk = vertices.size() + i2; else t.vtxk = i2 - 1;
+                    if (i0 < 0) t.vtxi = chien.size() + i0; else t.vtxi = i0 - 1;
+                    if (i1 < 0) t.vtxj = chien.size() + i1; else t.vtxj = i1 - 1;
+                    if (i2 < 0) t.vtxk = chien.size() + i2; else t.vtxk = i2 - 1;
                     if (j0 < 0) t.uvi = uvs.size() + j0; else   t.uvi = j0 - 1;
                     if (j1 < 0) t.uvj = uvs.size() + j1; else   t.uvj = j1 - 1;
                     if (j2 < 0) t.uvk = uvs.size() + j2; else   t.uvk = j2 - 1;
@@ -298,9 +298,9 @@ public:
                 } else {
                     nn = sscanf(consumedline, "%u/%u %u/%u %u/%u%n", &i0, &j0, &i1, &j1, &i2, &j2, &offset);
                     if (nn == 6) {
-                        if (i0 < 0) t.vtxi = vertices.size() + i0; else t.vtxi = i0 - 1;
-                        if (i1 < 0) t.vtxj = vertices.size() + i1; else t.vtxj = i1 - 1;
-                        if (i2 < 0) t.vtxk = vertices.size() + i2; else t.vtxk = i2 - 1;
+                        if (i0 < 0) t.vtxi = chien.size() + i0; else t.vtxi = i0 - 1;
+                        if (i1 < 0) t.vtxj = chien.size() + i1; else t.vtxj = i1 - 1;
+                        if (i2 < 0) t.vtxk = chien.size() + i2; else t.vtxk = i2 - 1;
                         if (j0 < 0) t.uvi = uvs.size() + j0; else   t.uvi = j0 - 1;
                         if (j1 < 0) t.uvj = uvs.size() + j1; else   t.uvj = j1 - 1;
                         if (j2 < 0) t.uvk = uvs.size() + j2; else   t.uvk = j2 - 1;
@@ -308,15 +308,15 @@ public:
                     } else {
                         nn = sscanf(consumedline, "%u %u %u%n", &i0, &i1, &i2, &offset);
                         if (nn == 3) {
-                            if (i0 < 0) t.vtxi = vertices.size() + i0; else t.vtxi = i0 - 1;
-                            if (i1 < 0) t.vtxj = vertices.size() + i1; else t.vtxj = i1 - 1;
-                            if (i2 < 0) t.vtxk = vertices.size() + i2; else t.vtxk = i2 - 1;
+                            if (i0 < 0) t.vtxi = chien.size() + i0; else t.vtxi = i0 - 1;
+                            if (i1 < 0) t.vtxj = chien.size() + i1; else t.vtxj = i1 - 1;
+                            if (i2 < 0) t.vtxk = chien.size() + i2; else t.vtxk = i2 - 1;
                             indices.push_back(t);
                         } else {
                             nn = sscanf(consumedline, "%u//%u %u//%u %u//%u%n", &i0, &k0, &i1, &k1, &i2, &k2, &offset);
-                            if (i0 < 0) t.vtxi = vertices.size() + i0; else t.vtxi = i0 - 1;
-                            if (i1 < 0) t.vtxj = vertices.size() + i1; else t.vtxj = i1 - 1;
-                            if (i2 < 0) t.vtxk = vertices.size() + i2; else t.vtxk = i2 - 1;
+                            if (i0 < 0) t.vtxi = chien.size() + i0; else t.vtxi = i0 - 1;
+                            if (i1 < 0) t.vtxj = chien.size() + i1; else t.vtxj = i1 - 1;
+                            if (i2 < 0) t.vtxk = chien.size() + i2; else t.vtxk = i2 - 1;
                             if (k0 < 0) t.ni = normals.size() + k0; else    t.ni = k0 - 1;
                             if (k1 < 0) t.nj = normals.size() + k1; else    t.nj = k1 - 1;
                             if (k2 < 0) t.nk = normals.size() + k2; else    t.nk = k2 - 1;
@@ -334,9 +334,9 @@ public:
                     TriangleIndices t2;
                     t2.group = curGroup;
                     if (nn == 3) {
-                        if (i0 < 0) t2.vtxi = vertices.size() + i0; else    t2.vtxi = i0 - 1;
-                        if (i2 < 0) t2.vtxj = vertices.size() + i2; else    t2.vtxj = i2 - 1;
-                        if (i3 < 0) t2.vtxk = vertices.size() + i3; else    t2.vtxk = i3 - 1;
+                        if (i0 < 0) t2.vtxi = chien.size() + i0; else    t2.vtxi = i0 - 1;
+                        if (i2 < 0) t2.vtxj = chien.size() + i2; else    t2.vtxj = i2 - 1;
+                        if (i3 < 0) t2.vtxk = chien.size() + i3; else    t2.vtxk = i3 - 1;
                         if (j0 < 0) t2.uvi = uvs.size() + j0; else  t2.uvi = j0 - 1;
                         if (j2 < 0) t2.uvj = uvs.size() + j2; else  t2.uvj = j2 - 1;
                         if (j3 < 0) t2.uvk = uvs.size() + j3; else  t2.uvk = j3 - 1;
@@ -351,9 +351,9 @@ public:
                     } else {
                         nn = sscanf(consumedline, "%u/%u%n", &i3, &j3, &offset);
                         if (nn == 2) {
-                            if (i0 < 0) t2.vtxi = vertices.size() + i0; else    t2.vtxi = i0 - 1;
-                            if (i2 < 0) t2.vtxj = vertices.size() + i2; else    t2.vtxj = i2 - 1;
-                            if (i3 < 0) t2.vtxk = vertices.size() + i3; else    t2.vtxk = i3 - 1;
+                            if (i0 < 0) t2.vtxi = chien.size() + i0; else    t2.vtxi = i0 - 1;
+                            if (i2 < 0) t2.vtxj = chien.size() + i2; else    t2.vtxj = i2 - 1;
+                            if (i3 < 0) t2.vtxk = chien.size() + i3; else    t2.vtxk = i3 - 1;
                             if (j0 < 0) t2.uvi = uvs.size() + j0; else  t2.uvi = j0 - 1;
                             if (j2 < 0) t2.uvj = uvs.size() + j2; else  t2.uvj = j2 - 1;
                             if (j3 < 0) t2.uvk = uvs.size() + j3; else  t2.uvk = j3 - 1;
@@ -364,9 +364,9 @@ public:
                         } else {
                             nn = sscanf(consumedline, "%u//%u%n", &i3, &k3, &offset);
                             if (nn == 2) {
-                                if (i0 < 0) t2.vtxi = vertices.size() + i0; else    t2.vtxi = i0 - 1;
-                                if (i2 < 0) t2.vtxj = vertices.size() + i2; else    t2.vtxj = i2 - 1;
-                                if (i3 < 0) t2.vtxk = vertices.size() + i3; else    t2.vtxk = i3 - 1;
+                                if (i0 < 0) t2.vtxi = chien.size() + i0; else    t2.vtxi = i0 - 1;
+                                if (i2 < 0) t2.vtxj = chien.size() + i2; else    t2.vtxj = i2 - 1;
+                                if (i3 < 0) t2.vtxk = chien.size() + i3; else    t2.vtxk = i3 - 1;
                                 if (k0 < 0) t2.ni = normals.size() + k0; else   t2.ni = k0 - 1;
                                 if (k2 < 0) t2.nj = normals.size() + k2; else   t2.nj = k2 - 1;
                                 if (k3 < 0) t2.nk = normals.size() + k3; else   t2.nk = k3 - 1;                             
@@ -377,9 +377,9 @@ public:
                             } else {
                                 nn = sscanf(consumedline, "%u%n", &i3, &offset);
                                 if (nn == 1) {
-                                    if (i0 < 0) t2.vtxi = vertices.size() + i0; else    t2.vtxi = i0 - 1;
-                                    if (i2 < 0) t2.vtxj = vertices.size() + i2; else    t2.vtxj = i2 - 1;
-                                    if (i3 < 0) t2.vtxk = vertices.size() + i3; else    t2.vtxk = i3 - 1;
+                                    if (i0 < 0) t2.vtxi = chien.size() + i0; else    t2.vtxi = i0 - 1;
+                                    if (i2 < 0) t2.vtxj = chien.size() + i2; else    t2.vtxj = i2 - 1;
+                                    if (i3 < 0) t2.vtxk = chien.size() + i3; else    t2.vtxk = i3 - 1;
                                     consumedline = consumedline + offset;
                                     i2 = i3;
                                     indices.push_back(t2);
@@ -396,18 +396,18 @@ public:
         }
         fclose(f);
 
-        bb.bmax = vertices[0];
-        bb.bmin = vertices[0];
-        for (int i=1; i<vertices.size();i++){
+        bb.bmax = chien[0];
+        bb.bmin = chien[0];
+        for (int i=1; i<chien.size();i++){
             for (int j=0; j<3;j++){
-                bb.bmin[j]  = std::min(bb.bmin[j], vertices[i][j]);
-                bb.bmax[j]  = std::max(bb.bmax[j], vertices[i][j]);
+                bb.bmin[j]  = std::min(bb.bmin[j], chien[i][j]);
+                bb.bmax[j]  = std::max(bb.bmax[j], chien[i][j]);
             }
         }
     };
  
     std::vector<TriangleIndices> indices;
-    std::vector<Vector> vertices;
+    std::vector<Vector> chien;
     std::vector<Vector> normals;
     std::vector<Vector> uvs;
     std::vector<Vector> vertexcolors;
@@ -421,11 +421,11 @@ public:
             int i0 = indices[i].vtxi;
             int i1 = indices[i].vtxj;
             int i2 = indices[i].vtxk;
-            Vector x = vertices[i0];
-            Vector y = vertices[i1];
-            Vector z = vertices[i2];
+            Vector x = chien[i0];
+            Vector y = chien[i1];
+            Vector z = chien[i2];
 
-            Triangle triangle(vertices[i0],vertices[i1],vertices[i2], albedo, isMirror, isTransparent);
+            Triangle triangle(chien[i0],chien[i1],chien[i2], albedo, speculaire, transparent);
             Vector localP, localN;
             double localt;
             if (triangle.intersect(r,localP, localN, localt)){
@@ -446,11 +446,12 @@ private:
 
 class Sphere : public Object{  //une origine et un rayon
 public:
-    Sphere(const Vector& origine, const double rayon, const Vector couleur, bool isMirror = false, bool isTransparent = false) : O(origine), R(rayon){
+    Sphere(const Vector& origine, const double rayon, const Vector couleur, bool speculaire = false, bool transparent = false) : O(origine), R(rayon){  //constructeur de la classe sphère 
         albedo = couleur; 
-        this -> isMirror = isMirror; 
-        this -> isTransparent = isTransparent;
+        this -> speculaire = speculaire; 
+        this -> transparent = transparent;
     };
+
     bool intersect(const Ray& r, Vector& P, Vector& N, double& t) const {
     //P la position, N la normale 
     double a = 1;
@@ -477,8 +478,8 @@ public:
         return true;
     };
 };
-    Vector O;
-    double R;
+    Vector O;  //origine
+    double R;  //rayon
 };
 
 class Scene {  // ensemble de sphères 
@@ -523,12 +524,12 @@ Vector getColor(const Ray &r, const Scene &scene, int nombre_rebond){   //foncti
     
     bool a = scene.intersection(r,P,N, sphere_inter_id);
 	if (a == true){  //une intersection est trouvée 
-        if (scene.objects[sphere_inter_id]->isMirror){  //surface miroir ou spéculaire
+        if (scene.objects[sphere_inter_id]->speculaire){  //surface miroir ou spéculaire
             Vector direction_miroir = r.direction - 2*dot(N,r.direction)*N;
             Ray rayon_miroir(P+0.001*N, direction_miroir);
             intensite_pixel = getColor(rayon_miroir, scene, nombre_rebond -1);  
         } else {
-            if (scene.objects[sphere_inter_id]->isTransparent){  //surface transparente
+            if (scene.objects[sphere_inter_id]->transparent){  //surface transparente
                 double indice1=1;   //air
                 double indice2 = 1.3;   //verre
                 Vector normale_transparence(N);
@@ -586,8 +587,8 @@ int main() {
 	double tanfov2 = tan(fov/2);
     Vector position_camera(0,0,55);  //origine du vecteur vision
     double focus = 55;  // tout ce qui est avant ou après cette distance là sera plus floue
-    int nbrayons = 10; 
-    int nbrebonds = 4;
+    int nbrayons = 3; 
+    int nbrebonds = 1;
 
     Sphere lumiere(Vector(-10, 40, 40),15, Vector(1,1,1));
 	Sphere s(Vector(-12,0,0),10, Vector(0,0,1),false,false);   //spère rouge
@@ -600,13 +601,13 @@ int main() {
     Sphere s5(Vector(0,0,-2000-25), 2000, Vector(1,0,1));  //mur au fond rose
      
 
-    //TriangleMesh chien("dog/13463_Australian_Cattle_Dog_v3.obj", 1, Vector(0,0,0), Vector(0,1,0));
+    TriangleMesh chien("dog/13463_Australian_Cattle_Dog_v3.obj", 1, Vector(0,0,0), Vector(0,1,0));
 
     Scene scene;
     scene.ajoutersphere(lumiere);
-    //scene.ajoutergeometry(chien);
-    scene.ajoutersphere(s);
-    scene.ajoutersphere(sbis);
+    scene.ajoutergeometry(chien);
+    //scene.ajoutersphere(s);
+    //scene.ajoutersphere(sbis);
     scene.ajoutersphere(s1);
     scene.ajoutersphere(s2);
     scene.ajoutersphere(s3);
