@@ -587,25 +587,27 @@ int main() {
 	double tanfov2 = tan(fov/2);
     Vector position_camera(0,0,55);  //origine du vecteur vision
     double focus = 55;  // tout ce qui est avant ou après cette distance là sera plus floue
-    int nbrayons = 3; 
+    int nbrayons = 2; 
     int nbrebonds = 1;
 
     Sphere lumiere(Vector(-10, 40, 40),15, Vector(1,1,1));
-	Sphere s(Vector(-12,0,0),10, Vector(0,0,1),false,false);   //spère rouge
-	Sphere sbis(Vector(12,0,0),10, Vector(0,1,0),false,false);  //sphère verte
+	Sphere s(Vector(-12,0,0),10, Vector(0,0,1),false,false);   //spère 
+	Sphere sbis(Vector(12,0,0),10, Vector(0,1,0),false,false);  //sphère 
 
-    Sphere s1(Vector(0,-2000-10,0), 2000, Vector(1,0,0));  //sol rouge, la sphère est posée dessus
-    Sphere s2(Vector(0,2000+25,0), 2000, Vector(0,0,1));  //plafond bleu
-    Sphere s3(Vector(-2000-25,0,0), 2000, Vector(1,0,1));  //mur à gauche rose
-    Sphere s4(Vector(2000+25,0,0), 2000, Vector(1,0,1));  //mur à droite rose 
-    Sphere s5(Vector(0,0,-2000-25), 2000, Vector(1,0,1));  //mur au fond rose
+    Sphere s1(Vector(0,-2000-10,0), 2000, Vector(1,1,1));  //sol, la sphère est posée dessus
+    Sphere s2(Vector(0,2000+25,0), 2000, Vector(0,0,1));  //plafond
+    Sphere s3(Vector(-2000-25,0,0), 2000, Vector(1,0,1));  //mur à gauche 
+    Sphere s4(Vector(2000+25,0,0), 2000, Vector(1,0,1));  //mur à droite  
+    Sphere s5(Vector(0,0,-2000-25), 2000, Vector(1,0,1));  //mur au fond 
      
 
-    TriangleMesh chien("dog/13463_Australian_Cattle_Dog_v3.obj", 1, Vector(0,0,0), Vector(0,1,0));
+    TriangleMesh chien("dog/13463_Australian_Cattle_Dog_v3.obj", 1, Vector(0,0,0), Vector(0,1,1));
+    Triangle triangle(Vector(-12,5,0), Vector(0,15,0), Vector(12,5,0), Vector(0,0,1), false, false);
 
     Scene scene;
     scene.ajoutersphere(lumiere);
     scene.ajoutergeometry(chien);
+    //scene.ajoutertriangle(triangle);
     //scene.ajoutersphere(s);
     //scene.ajoutersphere(sbis);
     scene.ajoutersphere(s1);
