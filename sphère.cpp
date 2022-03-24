@@ -587,7 +587,7 @@ int main() {
 	double tanfov2 = tan(fov/2);
     Vector position_camera(0,0,55);  //origine du vecteur vision
     double focus = 55;  // tout ce qui est avant ou après cette distance là sera plus floue
-    int nbrayons = 2; 
+    int nbrayons = 4; 
     int nbrebonds = 1;
 
     Sphere lumiere(Vector(-10, 40, 40),15, Vector(1,1,1));
